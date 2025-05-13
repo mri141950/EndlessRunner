@@ -1,60 +1,96 @@
 using UnityEngine;
 
+/// <summary>
+/// Spawns ground segments randomly and occasionally leaves gaps for player jumps.
+/// Attach to an empty GameObject. Set groundPrefabs, playerTransform, and parameters in Inspector.
+/// </summary>
 public class GroundSpawner : MonoBehaviour
 {
-    [Header("Ground Spawning")]
-    public GameObject groundPrefab;
-    public Transform player;
-    public float spawnDistance = 20f;
-    public float groundTileWidth = 20f;
+    [Header("Spawn Settings")]
+    [Tooltip("Prefabs of ground segments to spawn.")]
+    public GameObject[] groundPrefabs;
+
+    [Tooltip("Transform of the player (or camera) to track distance for spawning.")]
+    public Transform playerTransform;
+
+    [Tooltip("X coordinate at which to start spawning new segments.")]
+    public float spawnX = 20f;
+
+    [Tooltip("How far ahead of the player to maintain ground segments.")]
+    public float spawnThreshold = 15f;
 
     [Header("Gap Settings")]
     [Range(0f, 1f)]
-    public float gapChance = 1f;
-    public int minGapTiles = 1;
-    public int maxGapTiles = 3;
+    [Tooltip("Probability [0-1] that the next spawn will be a gap instead of ground.")]
+    public float gapProbability = 0.2f;
 
+    [Tooltip("Minimum width of gap in world units.")]
+    public float minGapWidth = 1f;
+    [Tooltip("Maximum width of gap in world units.")]
+    public float maxGapWidth = 3f;
+
+    // Tracks the X position where we should spawn next (ground or gap)
     private float nextSpawnX;
 
     void Start()
     {
-        Debug.Log($"[GroundSpawner] Start, player.x={player.position.x}");
-        nextSpawnX = player.position.x;
-        Debug.Log($"[GroundSpawner] Initial nextSpawnX={nextSpawnX}");
-
-        for (int i = 0; i < 3; i++)
-        {
-            SpawnTile();
-        }
+        nextSpawnX = spawnX;
     }
 
     void Update()
     {
-        Debug.Log($"[GroundSpawner] Update, nextSpawnX={nextSpawnX}");
-        if (player.position.x + spawnDistance > nextSpawnX)
+        // Keep spawning until we've filled ahead of the player
+        while (nextSpawnX < playerTransform.position.x + spawnThreshold)
         {
-            Debug.Log($"[GroundSpawner] In spawnDistance range");
-            float rand = Random.value;
-            Debug.Log($"[GroundSpawner] rand={rand:F2}, gapChance={gapChance}");
-            if (rand < gapChance)
-            {
-                int gapCount = Random.Range(minGapTiles, maxGapTiles + 1);
-                Debug.Log($"[GroundSpawner] SKIP {gapCount} tiles");
-                nextSpawnX += groundTileWidth * gapCount;
-            }
-            else
-            {
-                Debug.Log($"[GroundSpawner] SPAWN one tile");
-                SpawnTile();
-            }
+            TrySpawnSegment();
         }
     }
 
-    private void SpawnTile()
+    /// <summary>
+    /// Attempts to spawn either a gap or a ground segment based on gapProbability.
+    /// </summary>
+    void TrySpawnSegment()
     {
-        Vector3 spawnPos = new Vector3(nextSpawnX, transform.position.y, 0f);
-        Instantiate(groundPrefab, spawnPos, Quaternion.identity);
-        Debug.Log($"[GroundSpawner] Spawned tile at X={nextSpawnX}");
-        nextSpawnX += groundTileWidth;
+        float roll = Random.value;
+        if (roll < gapProbability)
+        {
+            // Spawn a gap
+            float gapWidth = Random.Range(minGapWidth, maxGapWidth);
+            nextSpawnX += gapWidth;
+        }
+        else
+        {
+            // Spawn a ground segment
+            SpawnGround();
+        }
+    }
+
+    /// <summary>
+    /// Picks a random ground prefab, instantiates it, and advances nextSpawnX.
+    /// </summary>
+    void SpawnGround()
+    {
+        // Choose a random prefab
+        GameObject prefab = groundPrefabs[Random.Range(0, groundPrefabs.Length)];
+
+        // Instantiate at nextSpawnX, preserving prefab Y and Z
+        Vector3 spawnPos = new Vector3(nextSpawnX, prefab.transform.position.y, prefab.transform.position.z);
+        GameObject go = Instantiate(prefab, spawnPos, Quaternion.identity, transform);
+
+        // Determine width of the spawned segment
+        float width = 0f;
+        var box = go.GetComponent<BoxCollider2D>();
+        if (box != null)
+        {
+            width = box.size.x * go.transform.localScale.x;
+        }
+        else
+        {
+            var sprite = go.GetComponent<SpriteRenderer>();
+            width = sprite.bounds.size.x;
+        }
+
+        // Advance nextSpawnX by the width of this segment
+        nextSpawnX += width;
     }
 }
