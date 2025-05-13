@@ -20,9 +20,6 @@ public class PlayerController : MonoBehaviour
     [Header("Fall Detection")]
     public float fallThresholdY = -5f;
 
-    [Header("References")]
-    public GameManager gameManager;
-
     private Rigidbody2D rb;
     private BoxCollider2D boxCol;
     private Vector2 originalColliderSize;
@@ -39,7 +36,6 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         boxCol = GetComponent<BoxCollider2D>();
 
-        // Cache original collider and scale
         originalColliderSize = boxCol.size;
         originalColliderOffset = boxCol.offset;
         originalScale = transform.localScale;
@@ -47,50 +43,31 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Check if grounded
-        isGrounded = Physics2D.OverlapCircle(
-            groundCheck.position,
-            groundCheckRadius,
-            groundLayer
-        );
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
 
-        // Handle jump input (only if not sliding)
-        if (Input.GetButtonDown("Jump") && isGrounded && !isSliding)
-        {
+        if (InputManager.JumpPressed && isGrounded && !isSliding)
             jumpRequest = true;
-        }
 
-        // Handle slide input
-        if (Input.GetButtonDown("Slide") && isGrounded && !isSliding)
-        {
+        if (InputManager.SlidePressed && isGrounded && !isSliding)
             StartSlide();
-        }
 
-        // Update slide timer
         if (isSliding)
         {
             slideTimer -= Time.deltaTime;
             if (slideTimer <= 0f)
-            {
                 EndSlide();
-            }
         }
 
-        // Fall detection
         if (transform.position.y < fallThresholdY)
-        {
-            gameManager.GameOver();
-        }
+            GameManager.Instance.TriggerGameOver();
     }
 
     void FixedUpdate()
     {
-        // Maintain horizontal run speed
         Vector2 vel = rb.linearVelocity;
         vel.x = speed;
         rb.linearVelocity = vel;
 
-        // Apply jump impulse
         if (jumpRequest && !isSliding)
         {
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
@@ -102,24 +79,16 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = true;
         slideTimer = slideDuration;
-
-        // Shrink collider
         boxCol.size = slideColliderSize;
         boxCol.offset = slideColliderOffset;
-
-        // Shrink sprite visually
         transform.localScale = new Vector3(originalScale.x, originalScale.y * 0.5f, originalScale.z);
     }
 
     private void EndSlide()
     {
         isSliding = false;
-
-        // Restore collider
         boxCol.size = originalColliderSize;
         boxCol.offset = originalColliderOffset;
-
-        // Restore sprite scale
         transform.localScale = originalScale;
     }
 
@@ -136,7 +105,7 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Obstacle"))
         {
-            gameManager.GameOver();
+            GameManager.Instance.TriggerGameOver();
         }
     }
 }

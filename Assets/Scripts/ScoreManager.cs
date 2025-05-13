@@ -1,19 +1,42 @@
 using UnityEngine;
-using TMPro;  // 引入 TextMeshPro 命名空间
+using TMPro;
 
 public class ScoreManager : MonoBehaviour
 {
-    [Header("UI Reference")]
-    public TMP_Text scoreText;   // 使用 TextMeshPro 的 TMP_Text
-    public Transform player;     // Reference to the player's transform
+    [Header("References")]
+    public TMP_Text scoreText;
+    public Transform player;
 
-    private float score;         // Player's score based on distance
+    private float score;
+    private bool isCounting = true;
+
+    private void OnEnable()
+    {
+        GameManager.OnGameOver += StopScore;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.OnGameOver -= StopScore;
+    }
 
     void Update()
     {
-        // Calculate score from player's x-position
+        if (!isCounting || player == null) return;
+
         score = player.position.x;
-        // Update the TMP text, casting to int for whole-number display
         scoreText.text = "Score: " + ((int)score).ToString();
+    }
+
+    public void ResetScore()
+    {
+        score = 0f;
+        isCounting = true;
+        scoreText.text = "Score: 0";
+    }
+
+    private void StopScore()
+    {
+        isCounting = false;
     }
 }

@@ -1,42 +1,62 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System;
 
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance { get; private set; }
+
     [Header("UI References")]
-    public TMP_Text gameOverText;  // Reference to the Game Over UI
+    public TMP_Text gameOverText;
+
+    public static event Action OnGameOver;
+
+    public static event Action OnRestart;
+
     private bool isGameOver = false;
+
+    private void Awake()
+    {
+
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
 
     void Start()
     {
-        // At start, hide the Game Over text
         gameOverText.gameObject.SetActive(false);
-        // Ensure normal time scale
         Time.timeScale = 1f;
     }
 
     void Update()
     {
-        if (isGameOver)
+        if (isGameOver && Input.GetKeyDown(KeyCode.R))
         {
-            // Press R to reload the current scene
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                // Resume time and reload scene
-                Time.timeScale = 1f;
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-            }
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
+        if (isGameOver && Input.GetKeyDown(KeyCode.R))
+        {
+            OnRestart?.Invoke();
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
     }
 
-    // Called by other scripts to trigger game over
-    public void GameOver()
+    public void TriggerGameOver()
     {
-        // Stop game time
+        if (isGameOver) return;
+
         Time.timeScale = 0f;
-        // Show Game Over UI
         gameOverText.gameObject.SetActive(true);
         isGameOver = true;
+
+        OnGameOver?.Invoke();
     }
 }
